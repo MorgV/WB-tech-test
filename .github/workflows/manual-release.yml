@@ -36,7 +36,7 @@ jobs:
             echo "# Changelog" > CHANGELOG.md
             git add CHANGELOG.md
             git commit -m "chore: add initial CHANGELOG.md"
-            git push origin develop
+            git push origin dev
           fi
 
       # 5. Создание релиза с standard-version
@@ -44,15 +44,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Переключаемся на develop
-          git checkout develop
-          git pull origin develop
+          # Переключаемся на dev
+          git checkout dev
+          git pull origin dev
 
           # Создаём релиз с выбранным типом
           npx standard-version --release-as ${{ github.event.inputs.release_type }}
 
           # Пушим коммит версии и тег
-          git push origin develop --follow-tags
+          git push origin dev --follow-tags
 
           # Получаем последний тег
           NEW_TAG=$(git describe --tags --abbrev=0)
@@ -61,7 +61,7 @@ jobs:
           # Мержим изменения в main
           git checkout main
           git pull origin main
-          git merge --no-ff develop -m "chore(release): merge release $NEW_TAG from develop"
+          git merge --no-ff dev -m "chore(release): merge release $NEW_TAG from dev"
           git push origin main --follow-tags
 
       # 6. Создание GitHub Release
@@ -71,7 +71,7 @@ jobs:
         run: |
           NEW_TAG=$(git describe --tags --abbrev=0)
           echo "Creating GitHub Release $NEW_TAG"
-          gh release create $NEW_TAG -t "Release $NEW_TAG" -n "Автоматический релиз из develop"
+          gh release create $NEW_TAG -t "Release $NEW_TAG" -n "Автоматический релиз из dev"
 
       # 7. (Опционально) Обновление README с последним changelog
       - name: Update README with latest changelog
