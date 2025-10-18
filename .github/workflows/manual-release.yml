@@ -13,81 +13,78 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout репозитория
+      # 1. Checkout репозитория с токеном
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.PAT_TOKEN }}
 
-      # 2. Setup Node
+      # 2. Setup Node.js
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20 # у тебя vite требует >=20
+          node-version: 20
 
       # 3. Установка зависимостей
       - name: Install dependencies
         run: npm ci
 
-      # 4. Подготовка CHANGELOG.md (если нет)
-      - name: Ensure CHANGELOG.md exists
-        run: |
-          if [ ! -f CHANGELOG.md ]; then
-            echo "# Changelog" > CHANGELOG.md
-            git add CHANGELOG.md
-            git commit -m "chore: add initial CHANGELOG.md"
-            git push origin dev
-          fi
-
-      # 5. Настройка Git identity
+      # 4. Настройка Git
       - name: Set Git identity
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
 
-      # 6. Создание релиза с standard-version
+      # 5. Проверка наличия CHANGELOG.md
+      - name: Ensure CHANGELOG.md exists
+        run: |
+          if [ ! -f CHANGELOG.md ]; then
+            echo "# Changelog" > CHANGELOG.md
+            git add CHANGELOG.md
+            git commit -m "chore: add initial CHANGELOG.md" || true
+            git push origin dev || true
+          fi
+
+      # 6. Создание релиза на dev
       - name: Create Release
         env:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           git checkout dev
           git pull origin dev
-
           npx standard-version --release-as ${{ github.event.inputs.release_type }}
-
           git push origin dev --follow-tags
-
           NEW_TAG=$(git describe --tags --abbrev=0)
           echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
 
-      # 7. Создание Pull Request в main
-      - name: Create Pull Request to main
+      # 7. Merge dev → main
+      - name: Merge dev into main
         env:
-          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
-          echo "Creating PR from dev to main"
-          gh pr create \
-            --base main \
-            --head dev \
-            --title "chore(release): merge release $NEW_TAG to main" \
-            --body "Auto-created release PR for version $NEW_TAG" || echo "PR already exists"
+          git fetch origin main
+          git checkout main
+          git pull origin main
+          git merge --no-ff origin/dev -m "chore(release): merge $NEW_TAG from dev"
+          git push origin main --follow-tags
 
       # 8. Создание GitHub Release
       - name: Create GitHub Release
         env:
-          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           echo "Creating GitHub Release $NEW_TAG"
           gh release create "$NEW_TAG" \
             --title "Release $NEW_TAG" \
             --notes "Автоматический релиз из dev"
 
-      # 9. (Опционально) Обновление README с последним changelog
+      # 9. Обновление README (опционально)
       - name: Update README with latest changelog
         run: |
+          NEW_TAG=$(git describe --tags --abbrev=0)
           LATEST_LOG=$(awk '/^## \[/{print; exit}' CHANGELOG.md)
           sed -i "s/LATEST_RELEASE_PLACEHOLDER/${LATEST_LOG}/" README.md || true
           git add README.md
           git commit -m "chore: update README with latest changelog $NEW_TAG" || true
-          git push origin dev
+          git push origin main || true
