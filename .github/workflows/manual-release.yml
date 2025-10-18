@@ -1,0 +1,84 @@
+name: Manual Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: "Type of release: patch, minor, major"
+        required: true
+        default: patch
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout репозитория
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # важно для тегов
+
+      # 2. Setup Node
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      # 3. Установка зависимостей
+      - name: Install dependencies
+        run: npm ci
+
+      # 4. Подготовка CHANGELOG.md (если нет)
+      - name: Ensure CHANGELOG.md exists
+        run: |
+          if [ ! -f CHANGELOG.md ]; then
+            echo "# Changelog" > CHANGELOG.md
+            git add CHANGELOG.md
+            git commit -m "chore: add initial CHANGELOG.md"
+            git push origin develop
+          fi
+
+      # 5. Создание релиза с standard-version
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Переключаемся на develop
+          git checkout develop
+          git pull origin develop
+
+          # Создаём релиз с выбранным типом
+          npx standard-version --release-as ${{ github.event.inputs.release_type }}
+
+          # Пушим коммит версии и тег
+          git push origin develop --follow-tags
+
+          # Получаем последний тег
+          NEW_TAG=$(git describe --tags --abbrev=0)
+          echo "New release tag: $NEW_TAG"
+
+          # Мержим изменения в main
+          git checkout main
+          git pull origin main
+          git merge --no-ff develop -m "chore(release): merge release $NEW_TAG from develop"
+          git push origin main --follow-tags
+
+      # 6. Создание GitHub Release
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NEW_TAG=$(git describe --tags --abbrev=0)
+          echo "Creating GitHub Release $NEW_TAG"
+          gh release create $NEW_TAG -t "Release $NEW_TAG" -n "Автоматический релиз из develop"
+
+      # 7. (Опционально) Обновление README с последним changelog
+      - name: Update README with latest changelog
+        run: |
+          NEW_TAG=$(git describe --tags --abbrev=0)
+          LATEST_LOG=$(awk '/^## \[/{print; exit}' CHANGELOG.md)
+          sed -i "s/LATEST_RELEASE_PLACEHOLDER/${LATEST_LOG}/" README.md || true
+          git add README.md
+          git commit -m "chore: update README with latest changelog $NEW_TAG" || true
+          git push origin main
