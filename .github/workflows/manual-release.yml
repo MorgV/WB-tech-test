@@ -13,72 +13,84 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout репозитория с PAT
+      # 1. Checkout репозитория
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # важно для тегов
           token: ${{ secrets.PAT_TOKEN }}
 
       # 2. Setup Node
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20 # обновим, чтобы не было EBADENGINE
 
       # 3. Установка зависимостей
       - name: Install dependencies
         run: npm ci
 
-      # 4. Установка git identity
-      - name: Set Git identity
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-
-      # 5. Подготовка CHANGELOG.md (если нет)
+      # 4. Подготовка CHANGELOG.md (если нет)
       - name: Ensure CHANGELOG.md exists
         run: |
           if [ ! -f CHANGELOG.md ]; then
             echo "# Changelog" > CHANGELOG.md
             git add CHANGELOG.md
-            git commit -m "chore: add initial CHANGELOG.md"
-            git push origin dev
+            git commit -m "chore: add initial CHANGELOG.md" || true
+            git push origin dev || true
           fi
 
-      # 6. Создание релиза с standard-version
-      - name: Create Release
+      # 5. Настраиваем Git
+      - name: Set Git identity
         run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+      # 6. Создание и пуш релиза
+      - name: Create Release
+        env:
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          # Переключаемся на dev
           git checkout dev
           git pull origin dev
 
-          # Генерация версии и CHANGELOG
+          # Устанавливаем origin с токеном (иначе 403)
+          git remote set-url origin https://x-access-token:${PAT_TOKEN}@github.com/${{ github.repository }}.git
+
+          # Создаём релиз с выбранным типом (patch, minor, major)
           npx standard-version --release-as ${{ github.event.inputs.release_type }}
 
-          # Пушим коммиты и тег в dev
+          # Пушим коммит и тег
           git push origin dev --follow-tags
 
-          # Получаем последний тег
+          # Получаем тег
           NEW_TAG=$(git describe --tags --abbrev=0)
           echo "New release tag: $NEW_TAG"
 
-          # Мержим изменения в main
+          # Мержим в main
           git checkout main
           git pull origin main
           git merge --no-ff dev -m "chore(release): merge release $NEW_TAG from dev"
           git push origin main --follow-tags
 
-      # 7. Создание GitHub Release через CLI
+      # 7. Создание GitHub Release
       - name: Create GitHub Release
         env:
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           NEW_TAG=$(git describe --tags --abbrev=0)
           echo "Creating GitHub Release $NEW_TAG"
-          gh release create $NEW_TAG -t "Release $NEW_TAG" -n "Автоматический релиз из dev"
+          gh release create "$NEW_TAG" \
+            -t "Release $NEW_TAG" \
+            -n "Автоматический релиз из dev" \
+            --repo ${{ github.repository }} \
+            --token $PAT_TOKEN
 
-      # 8. Обновление README с последним changelog (опционально)
+      # 8. (Опционально) Обновление README с последним changelog
       - name: Update README with latest changelog
+        env:
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           NEW_TAG=$(git describe --tags --abbrev=0)
           LATEST_LOG=$(awk '/^## \[/{print; exit}' CHANGELOG.md)
