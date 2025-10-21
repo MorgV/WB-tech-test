@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import {
   Box,
   Typography,
@@ -8,41 +8,61 @@ import {
   TableBody,
   TableRow,
   TableCell,
+  Avatar,
+  CircularProgress,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
+import { useAppDispatch, useAppSelector } from "../app/hooks";
+import { fetchUsers } from "../features/users/usersSlice";
 
 const UsersListPage = () => {
   const navigate = useNavigate();
-  const [users] = useState([
-    {
-      id: "1",
-      fullName: "Иван Иванов",
-      email: "ivan@mail.com",
-      position: "Frontend",
-    },
-    {
-      id: "2",
-      fullName: "Мария Петрова",
-      email: "maria@mail.com",
-      position: "Backend",
-    },
-  ]);
+  const dispatch = useAppDispatch();
+  const {
+    list: users,
+    loading,
+    error,
+  } = useAppSelector((state) => state.users);
+
+  useEffect(() => {
+    if (!users.length) {
+      dispatch(fetchUsers());
+    }
+  }, [dispatch, users.length]);
+
+  if (loading) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", mt: 6 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 4 }}>
+        <Typography color="error">{error}</Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ p: 4 }}>
-      <Typography variant="h4" sx={{ mb: 2 }}>
+      <Typography variant="h4" sx={{ mb: 3 }}>
         Список пользователей
       </Typography>
 
-      <Button variant="contained" sx={{ mb: 2 }}>
+      <Button variant="contained" sx={{ mb: 3 }}>
         Создать пользователя
       </Button>
 
       <Table>
         <TableHead>
           <TableRow>
+            <TableCell>Аватар</TableCell>
             <TableCell>Имя</TableCell>
             <TableCell>Email</TableCell>
+            <TableCell>Телефон</TableCell>
             <TableCell>Должность</TableCell>
           </TableRow>
         </TableHead>
@@ -50,11 +70,16 @@ const UsersListPage = () => {
           {users.map((user) => (
             <TableRow
               key={user.id}
+              hover
               onClick={() => navigate(`/users/${user.id}`)}
               sx={{ cursor: "pointer" }}
             >
+              <TableCell>
+                <Avatar src={user.avatar} alt={user.fullName} />
+              </TableCell>
               <TableCell>{user.fullName}</TableCell>
               <TableCell>{user.email}</TableCell>
+              <TableCell>{user.phone}</TableCell>
               <TableCell>{user.position}</TableCell>
             </TableRow>
           ))}
