@@ -72,8 +72,17 @@ const usersSlice = createSlice({
   extraReducers: (builder) => {
     builder
       // fetch all
+      .addCase(fetchUsers.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(fetchUsers.fulfilled, (state, action: PayloadAction<User[]>) => {
         state.list = action.payload;
+        state.loading = false;
+      })
+      .addCase(fetchUsers.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error?.message || "Произошла ошибка";
       })
 
       // fetch by id
@@ -100,25 +109,6 @@ const usersSlice = createSlice({
       // delete
       .addCase(deleteUser.fulfilled, (state, action: PayloadAction<string>) => {
         state.list = state.list.filter((u) => u.id !== action.payload);
-      })
-
-      //  Универсальные matchers
-      .addMatcher(
-        (action) => action.type.endsWith("/pending"),
-        (state) => {
-          state.loading = true;
-          state.error = null;
-        }
-      )
-      .addMatcher(
-        (action) => action.type.endsWith("/fulfilled"),
-        (state) => {
-          state.loading = false;
-        }
-      )
-      .addMatcher(isRejectedAction, (state, action) => {
-        state.loading = false;
-        state.error = action.error?.message || "Произошла ошибка";
       });
   },
 });

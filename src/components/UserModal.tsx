@@ -8,6 +8,7 @@ import {
   Button,
   Typography,
   Box,
+  CircularProgress,
 } from "@mui/material";
 import { useAppDispatch } from "../app/hooks";
 import {
@@ -26,6 +27,7 @@ type UserModalProps = {
 
 const UserModal = ({ open, onClose, mode, user }: UserModalProps) => {
   const dispatch = useAppDispatch();
+
   const [form, setForm] = useState({
     fullName: "",
     email: "",
@@ -33,7 +35,10 @@ const UserModal = ({ open, onClose, mode, user }: UserModalProps) => {
     position: "",
     avatar: "",
   });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  // Инициализация формы и сброс локальной ошибки при открытии модалки
   useEffect(() => {
     if (mode === "edit" && user) {
       setForm({
@@ -43,9 +48,10 @@ const UserModal = ({ open, onClose, mode, user }: UserModalProps) => {
         position: user.position,
         avatar: user.avatar || "",
       });
-    } else if (mode === "create") {
+    } else {
       setForm({ fullName: "", email: "", phone: "", position: "", avatar: "" });
     }
+    setError(null);
   }, [mode, user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -53,14 +59,24 @@ const UserModal = ({ open, onClose, mode, user }: UserModalProps) => {
   };
 
   const handleSubmit = async () => {
-    if (mode === "create") {
-      await dispatch(createUser(form));
-    } else if (mode === "edit" && user) {
-      await dispatch(updateUser({ id: user.id, data: form }));
-    } else if (mode === "delete" && user) {
-      await dispatch(deleteUser(user.id));
+    setSaving(true);
+    setError(null);
+
+    try {
+      if (mode === "create") {
+        await dispatch(createUser(form)).unwrap();
+      } else if (mode === "edit" && user) {
+        await dispatch(updateUser({ id: user.id, data: form })).unwrap();
+      } else if (mode === "delete" && user) {
+        await dispatch(deleteUser(user.id)).unwrap();
+      }
+      onClose(); // закрываем модалку при успехе
+    } catch (err: any) {
+      // локальная ошибка для модалки
+      setError(err?.message || "Произошла ошибка при сохранении");
+    } finally {
+      setSaving(false);
     }
-    onClose();
   };
 
   return (
@@ -72,6 +88,12 @@ const UserModal = ({ open, onClose, mode, user }: UserModalProps) => {
       </DialogTitle>
 
       <DialogContent dividers>
+        {error && (
+          <Typography color="error" sx={{ mb: 2 }}>
+            {error}
+          </Typography>
+        )}
+
         {mode === "delete" ? (
           <Typography>
             Вы уверены, что хотите удалить пользователя <b>{user?.fullName}</b>?
@@ -79,12 +101,7 @@ const UserModal = ({ open, onClose, mode, user }: UserModalProps) => {
         ) : (
           <Box
             component="form"
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 2,
-              mt: 1,
-            }}
+            sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}
           >
             <TextField
               label="Имя"
@@ -126,13 +143,23 @@ const UserModal = ({ open, onClose, mode, user }: UserModalProps) => {
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onClose}>Отмена</Button>
+        <Button onClick={onClose} disabled={saving}>
+          Отмена
+        </Button>
         <Button
           onClick={handleSubmit}
           color={mode === "delete" ? "error" : "primary"}
           variant="contained"
+          disabled={saving}
+          startIcon={saving && <CircularProgress size={20} />}
         >
-          {mode === "delete" ? "Удалить" : "Сохранить"}
+          {saving
+            ? mode === "delete"
+              ? "Удаляем..."
+              : "Сохраняем..."
+            : mode === "delete"
+            ? "Удалить"
+            : "Сохранить"}
         </Button>
       </DialogActions>
     </Dialog>
