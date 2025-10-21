@@ -4,7 +4,7 @@ import {
   type PayloadAction,
   type AnyAction,
 } from "@reduxjs/toolkit";
-import { usersApi, type User } from "../../api/usersApi";
+import { usersApi, type User } from "../api/usersApi";
 
 //  Async thunks (API calls)
 export const fetchUsers = createAsyncThunk<User[]>(

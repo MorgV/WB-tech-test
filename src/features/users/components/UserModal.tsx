@@ -10,13 +10,10 @@ import {
   Box,
   CircularProgress,
 } from "@mui/material";
-import { useAppDispatch } from "../app/hooks";
-import {
-  createUser,
-  updateUser,
-  deleteUser,
-} from "../features/users/usersSlice";
+import { useAppDispatch } from "../../../app/hooks";
+
 import { type User } from "../api/usersApi";
+import { createUser, deleteUser, updateUser } from "../model/usersSlice";
 
 type UserModalProps = {
   open: boolean;
