@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useParams } from "react-router-dom";
 import {
   Box,
@@ -7,32 +7,32 @@ import {
   CircularProgress,
   Paper,
 } from "@mui/material";
-import { usersApi } from "../api/usersApi";
+import { useAppDispatch, useAppSelector } from "../app/hooks";
+import { fetchUserById } from "../features/users/usersSlice";
 
 const UserDetailPage = () => {
   const { id } = useParams();
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useAppDispatch();
+  const { current: user, loading, error } = useAppSelector((s) => s.users);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const data = await usersApi.getById(id!);
-        setUser(data);
-      } catch (error) {
-        console.error("Ошибка загрузки пользователя:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUser();
-  }, [id]);
+    if (id && (!user || user.id !== id)) {
+      dispatch(fetchUserById(id));
+    }
+  }, [dispatch, id, user]);
 
   if (loading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", mt: 6 }}>
         <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 4 }}>
+        <Typography color="error">{error}</Typography>
       </Box>
     );
   }
