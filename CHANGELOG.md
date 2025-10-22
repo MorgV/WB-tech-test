@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.3](https://github.com/MorgV/WB-tech-test/compare/v0.1.2...v0.1.3) (2025-10-22)
+
+
+### Features
+
+* **dist:** пушу dist в мейн для быстрого деплоя. В домашних условиях не повторять ([035b207](https://github.com/MorgV/WB-tech-test/commit/035b207563055619efb6cdcf6dd5b55c87b14fc8))
+
 ### [0.1.2](https://github.com/MorgV/WB-tech-test/compare/v0.1.1...v0.1.2) (2025-10-22)
 
 ### [0.1.1](https://github.com/MorgV/WB-tech-test/compare/v0.1.0...v0.1.1) (2025-10-22)
