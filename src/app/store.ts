@@ -20,7 +20,7 @@ const persistConfig = {
   key: "root",
   storage,
   whitelist: ["users"],
-  devTools: process.env.NODE_ENV !== "production",
+  devTools: import.meta.env.NODE_ENV !== "production",
   blacklist: ["users.error", "users.loading"],
 };
 

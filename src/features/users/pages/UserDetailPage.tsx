@@ -2,32 +2,36 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { CircularProgress, Typography, IconButton, Box } from "@mui/material";
 import { ArrowBack } from "@mui/icons-material";
-import { useAppDispatch, useAppSelector } from "../../../app/hooks";
+import { usersApi, type User } from "../api/usersApi";
 import { PageContainer } from "../../../shared/UI/PageContainer";
-import { fetchUserById } from "../model/usersSlice";
 import { UserCard } from "../components/UserCard";
 import { StarBox } from "../../../shared/UI";
 
 const UserDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const dispatch = useAppDispatch();
-  const { current: user, loading, error } = useAppSelector((s) => s.users);
-  const [loadingId, setLoadingId] = useState<string | null>(null);
+
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
-    if (user?.id === id) return;
-    setLoadingId(id);
 
-    dispatch(fetchUserById(id)).finally(() => setLoadingId(null));
-  }, [dispatch, id]);
+    setLoading(true);
+    usersApi
+      .getById(id)
+      .then((data) => {
+        setUser(data);
+        setError(null);
+      })
+      .catch(() => setError("Не удалось загрузить пользователя"))
+      .finally(() => setLoading(false));
+  }, [id]);
 
   const renderContent = () => {
-    if (loading || loadingId === id) {
+    if (loading)
       return <CircularProgress sx={{ mt: 8, alignSelf: "center" }} />;
-    }
-
     if (error) return <Typography color="error">{error}</Typography>;
     if (!user) return <Typography>Пользователь не найден</Typography>;
 
@@ -46,7 +50,6 @@ const UserDetailPage = () => {
 
   return (
     <PageContainer>
-      {/* Стрелка назад */}
       <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
         <IconButton onClick={() => navigate(-1)}>
           <ArrowBack />

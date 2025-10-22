@@ -15,7 +15,7 @@ import {
   createUser,
   updateUser,
   deleteUser,
-} from "../features/users/usersSlice";
+} from "../features/users/model/usersSlice";
 import { type User } from "../features/users/api/usersApi";
 
 type UserModalProps = {
