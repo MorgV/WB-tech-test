@@ -25,14 +25,14 @@ const UsersListPage = () => {
   );
   const [selectedUser, setSelectedUser] = useState<User | undefined>();
 
-  // Загрузка пользователей
+  // ======== Загрузка пользователей один раз ========
   useEffect(() => {
     if (users.length === 0) {
       dispatch(fetchUsers());
     }
-  }, [dispatch]);
+  }, [dispatch, users.length]);
 
-  // ======== Мемоизация модалки ========
+  // ======== Модалка ========
   const openCreate = useCallback(() => {
     setModalMode("create");
     setSelectedUser(undefined);
@@ -53,38 +53,25 @@ const UsersListPage = () => {
 
   const closeModal = useCallback(() => setModalOpen(false), []);
 
-  // ======== Мемоизация пагинации ========
-  const pagination = useMemo(
-    () => ({
-      page,
-      usersPerPage,
-      setPage,
-      setUsersPerPage: (v: number) => {
-        setUsersPerPage(v);
-        setPage(1);
-      },
-    }),
-    [page, usersPerPage]
-  );
-
-  const handleChangeUsersPerPage = useCallback(
-    (v: number) => pagination.setUsersPerPage(v),
-    [pagination]
-  );
+  // ======== Callback для изменения usersPerPage ========
+  const handleChangeUsersPerPage = useCallback((v: number) => {
+    setUsersPerPage(v);
+    setPage(1); // сброс страницы
+  }, []);
 
   // ======== SPA-переход по клику на строку ========
   const onRowClick = useCallback(
-    (user: User) => navigate(`/users/${user.id}`, { replace: false }),
+    (user: User) => navigate(`/users/${user.id}`),
     [navigate]
   );
 
   // ======== Конфиг таблицы ========
   const tableConfig = useMemo(
     () => ({
-      pagination,
+      pagination: { page, usersPerPage, setPage },
       handlers: { onRowClick, onEdit: openEdit, onDelete: openDelete },
     }),
-    [pagination, onRowClick, openEdit, openDelete]
+    [page, usersPerPage, onRowClick, openEdit, openDelete]
   );
 
   return (
