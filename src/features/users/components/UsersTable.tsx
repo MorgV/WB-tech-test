@@ -6,7 +6,10 @@ import {
   TableRow,
   Box,
   Pagination,
+  Typography,
+  useMediaQuery,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import { StarTableCell } from "../../../shared/UI/StarTableCell";
 import { UserTableRow } from "./UserTableRow";
 import { type User } from "../api/usersApi";
@@ -35,6 +38,8 @@ type UsersTableProps = {
 
 export const UsersTable = memo(({ users = [], config }: UsersTableProps) => {
   const { handlers, pagination } = config;
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const paginatedUsers = useMemo(
     () =>
@@ -45,32 +50,88 @@ export const UsersTable = memo(({ users = [], config }: UsersTableProps) => {
     [users, pagination.page, pagination.usersPerPage]
   );
 
-  console.log("render table");
-
   return (
     <>
-      <Table>
-        <TableHead>
-          <TableRow>
-            {["Аватар", "Имя", "Email", "Телефон", "Должность", "Действия"].map(
-              (title) => (
+      {!isMobile ? (
+        // 💻 TABLE VIEW
+        <Table>
+          <TableHead>
+            <TableRow>
+              {[
+                "Аватар",
+                "Имя",
+                "Email",
+                "Телефон",
+                "Должность",
+                "Действия",
+              ].map((title) => (
                 <StarTableCell key={title}>{title}</StarTableCell>
-              )
-            )}
-          </TableRow>
-        </TableHead>
-        <TableBody>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {paginatedUsers.map((user) => (
+              <UserTableRow
+                key={user.id}
+                user={user}
+                onClick={() => handlers.onRowClick(user)}
+                onEdit={() => handlers.onEdit(user)}
+                onDelete={() => handlers.onDelete(user)}
+              />
+            ))}
+          </TableBody>
+        </Table>
+      ) : (
+        // 📱 MOBILE CARD VIEW
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {paginatedUsers.map((user) => (
-            <UserTableRow
+            <Box
               key={user.id}
-              user={user}
               onClick={() => handlers.onRowClick(user)}
-              onEdit={() => handlers.onEdit(user)}
-              onDelete={() => handlers.onDelete(user)}
-            />
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                border: "1px solid rgba(255,255,255,0.1)",
+                background: "rgba(255,255,255,0.03)",
+                boxShadow: "0 0 10px rgba(255,232,31,0.1)",
+              }}
+            >
+              {/* Верхняя строка: имя + кнопки справа */}
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  mb: 1,
+                }}
+              >
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    fontWeight: "bold",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    maxWidth: "70%",
+                  }}
+                >
+                  {user.fullName}
+                </Typography>
+                <UserTableRow.MobileActions
+                  user={user}
+                  onEdit={() => handlers.onEdit(user)}
+                  onDelete={() => handlers.onDelete(user)}
+                />
+              </Box>
+
+              {/* Остальная информация */}
+              <Typography variant="body2">📧 {user.email}</Typography>
+              <Typography variant="body2">📞 {user.phone}</Typography>
+              <Typography variant="body2">💼 {user.position}</Typography>
+            </Box>
           ))}
-        </TableBody>
-      </Table>
+        </Box>
+      )}
 
       <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
         <Pagination
