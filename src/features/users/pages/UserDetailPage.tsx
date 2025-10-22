@@ -1,113 +1,62 @@
-import { useEffect } from "react";
-import { useParams } from "react-router-dom";
-import { Typography, CircularProgress } from "@mui/material";
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { CircularProgress, Typography, IconButton, Box } from "@mui/material";
+import { ArrowBack } from "@mui/icons-material";
 import { useAppDispatch, useAppSelector } from "../../../app/hooks";
 import { PageContainer } from "../../../shared/UI/PageContainer";
-import { StarBox } from "../../../shared/UI/StarBox";
-import { StarAvatar } from "../../../shared/UI/StarAvatar";
 import { fetchUserById } from "../model/usersSlice";
+import { UserCard } from "../components/UserCard";
+import { StarBox } from "../../../shared/UI";
 
 const UserDetailPage = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { current: user, loading, error } = useAppSelector((s) => s.users);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (id && (!user || user.id !== id)) {
-      dispatch(fetchUserById(id));
+    if (!id) return;
+    if (user?.id === id) return;
+    setLoadingId(id);
+
+    dispatch(fetchUserById(id)).finally(() => setLoadingId(null));
+  }, [dispatch, id]);
+
+  const renderContent = () => {
+    if (loading || loadingId === id) {
+      return <CircularProgress sx={{ mt: 8, alignSelf: "center" }} />;
     }
-  }, [dispatch, id, user]);
 
-  if (loading) {
-    return (
-      <PageContainer>
-        <CircularProgress sx={{ alignSelf: "center", mt: 8 }} />
-      </PageContainer>
-    );
-  }
+    if (error) return <Typography color="error">{error}</Typography>;
+    if (!user) return <Typography>Пользователь не найден</Typography>;
 
-  if (error) {
     return (
-      <PageContainer>
-        <Typography color="error">{error}</Typography>
-      </PageContainer>
+      <>
+        <UserCard user={user} />
+        <StarBox sx={{ mt: 2, p: 2 }}>
+          <Typography variant="h6">О пользователе:</Typography>
+          <Typography>
+            {user.about || "Нет дополнительной информации."}
+          </Typography>
+        </StarBox>
+      </>
     );
-  }
-
-  if (!user) {
-    return (
-      <PageContainer>
-        <Typography variant="h5" sx={{ color: "#ffe81f" }}>
-          Пользователь не найден
-        </Typography>
-      </PageContainer>
-    );
-  }
+  };
 
   return (
     <PageContainer>
-      <StarBox
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: 4,
-          p: 4,
-          borderRadius: 4,
-          border: "1px solid rgba(255, 232, 31, 0.4)",
-          background: "rgba(255, 255, 255, 0.05)",
-          boxShadow: "0 0 20px rgba(255, 232, 31, 0.1)",
-          transition: "0.3s",
-          "&:hover": {
-            boxShadow: "0 0 25px rgba(255, 232, 31, 0.3)",
-          },
-        }}
-      >
-        <StarAvatar
-          src={user.avatar}
-          alt={user.fullName}
-          sx={{ width: 140, height: 140 }}
-        />
-        <div>
-          <Typography
-            variant="h4"
-            sx={{
-              fontFamily: "'Star Jedi', sans-serif",
-              color: "#ffe81f",
-              textShadow: "0 0 10px #ffe81f",
-            }}
-          >
-            {user.fullName}
-          </Typography>
-          <Typography
-            sx={{
-              color: "#aaa",
-              fontSize: "1.1rem",
-              mb: 1,
-            }}
-          >
-            {user.position}
-          </Typography>
-          <Typography sx={{ color: "#fff" }}>{user.email}</Typography>
-          <Typography sx={{ color: "#fff" }}>{user.phone}</Typography>
-        </div>
-      </StarBox>
+      {/* Стрелка назад */}
+      <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+        <IconButton onClick={() => navigate(-1)}>
+          <ArrowBack />
+        </IconButton>
+        <Typography variant="h6" sx={{ ml: 1 }}>
+          Детали пользователя
+        </Typography>
+      </Box>
 
-      <StarBox sx={{ mt: 4, p: 3 }}>
-        <Typography
-          variant="h6"
-          sx={{
-            fontFamily: "'Star Jedi', sans-serif",
-            color: "#ffe81f",
-            textShadow: "0 0 8px #ffe81f",
-            mb: 1,
-          }}
-        >
-          О пользователе:
-        </Typography>
-        <Typography sx={{ color: "#e0e0e0" }}>
-          {user.about || "Нет дополнительной информации."}
-        </Typography>
-      </StarBox>
+      {renderContent()}
     </PageContainer>
   );
 };

@@ -7,14 +7,36 @@ import {
 import { usersApi, type User } from "../api/usersApi";
 
 //  Async thunks (API calls)
-export const fetchUsers = createAsyncThunk<User[]>(
-  "users/fetchAll",
-  async () => await usersApi.getAll()
-);
+export const fetchUsers = createAsyncThunk<
+  User[],
+  void,
+  { state: { users: UsersState } }
+>("users/fetchAll", async () => await usersApi.getAll(), {
+  condition: (_, { getState }) => {
+    const { list } = getState().users;
+    // если список уже есть, не делать повторный запрос
+    return list.length === 0;
+  },
+});
 
-export const fetchUserById = createAsyncThunk<User, string>(
+export const fetchUserById = createAsyncThunk<
+  User,
+  string,
+  { state: { users: UsersState } }
+>(
   "users/fetchById",
-  async (id) => await usersApi.getById(id)
+  async (id) => {
+    const user = await usersApi.getById(id);
+    return user;
+  },
+  {
+    condition: (id, { getState }) => {
+      const { current } = getState().users;
+      // если текущий юзер уже совпадает с id, отменяем fetch
+      if (current?.id === id) return false;
+      return true;
+    },
+  }
 );
 
 export const createUser = createAsyncThunk<User, Partial<User>>(

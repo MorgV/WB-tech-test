@@ -1,216 +1,122 @@
-// src/pages/UsersListPage.tsx
-import { useEffect, useState } from "react";
-import {
-  Typography,
-  Table,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-  CircularProgress,
-  Pagination,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  IconButton,
-  Box,
-} from "@mui/material";
-import { Edit, Delete } from "@mui/icons-material";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { PageContainer } from "../../../shared/UI/PageContainer";
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../../app/hooks";
 import UserModal from "../components/UserModal";
-import { type User } from "../api/usersApi";
-import { PageContainer } from "../../../shared/UI/PageContainer";
-import { GlowButton } from "../../../shared/UI/GlowButton";
-import { StarTableCell } from "../../../shared/UI/StarTableCell";
-import { StarAvatar } from "../../../shared/UI/StarAvatar";
-import { StarBox } from "../../../shared/UI/StarBox";
+import { UsersHeader } from "../components/UsersHeader";
+import { UsersTable } from "../components/UsersTable";
 import { fetchUsers } from "../model/usersSlice";
+import { type User } from "../api/usersApi";
+import { CircularProgress, Typography, Box } from "@mui/material";
 
 const UsersListPage = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const {
-    list: users,
-    loading,
-    error,
-  } = useAppSelector((state) => state.users);
+  const { list: users = [], loading, error } = useAppSelector((s) => s.users);
 
+  // Пагинация
   const [page, setPage] = useState(1);
-  const [usersPerPage, setUsersPerPage] = useState(10);
+  const [usersPerPage, setUsersPerPage] = useState(5);
+
+  // Модалка
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit" | "delete">(
     "create"
   );
   const [selectedUser, setSelectedUser] = useState<User | undefined>();
 
+  // Загрузка пользователей
   useEffect(() => {
-    dispatch(fetchUsers());
+    if (users.length === 0) {
+      dispatch(fetchUsers());
+    }
   }, [dispatch]);
 
-  const handleChangePage = (_: React.ChangeEvent<unknown>, value: number) => {
-    setPage(value);
-  };
+  // ======== Мемоизация модалки ========
+  const openCreate = useCallback(() => {
+    setModalMode("create");
+    setSelectedUser(undefined);
+    setModalOpen(true);
+  }, []);
 
-  const handleChangeUsersPerPage = (
-    event: React.ChangeEvent<{ value: unknown }>
-  ) => {
-    setUsersPerPage(Number(event.target.value));
-    setPage(1);
-  };
+  const openEdit = useCallback((user: User) => {
+    setModalMode("edit");
+    setSelectedUser(user);
+    setModalOpen(true);
+  }, []);
 
-  const paginatedUsers = users.slice(
-    (page - 1) * usersPerPage,
-    page * usersPerPage
+  const openDelete = useCallback((user: User) => {
+    setModalMode("delete");
+    setSelectedUser(user);
+    setModalOpen(true);
+  }, []);
+
+  const closeModal = useCallback(() => setModalOpen(false), []);
+
+  // ======== Мемоизация пагинации ========
+  const pagination = useMemo(
+    () => ({
+      page,
+      usersPerPage,
+      setPage,
+      setUsersPerPage: (v: number) => {
+        setUsersPerPage(v);
+        setPage(1);
+      },
+    }),
+    [page, usersPerPage]
   );
 
-  if (loading) {
-    return (
-      <PageContainer>
-        <CircularProgress sx={{ alignSelf: "center", mt: 8 }} />
-      </PageContainer>
-    );
-  }
+  const handleChangeUsersPerPage = useCallback(
+    (v: number) => pagination.setUsersPerPage(v),
+    [pagination]
+  );
 
-  if (error) {
-    return (
-      <PageContainer>
-        <Typography color="error">{error}</Typography>
-      </PageContainer>
-    );
-  }
+  // ======== SPA-переход по клику на строку ========
+  const onRowClick = useCallback(
+    (user: User) => navigate(`/users/${user.id}`, { replace: false }),
+    [navigate]
+  );
+
+  // ======== Конфиг таблицы ========
+  const tableConfig = useMemo(
+    () => ({
+      pagination,
+      handlers: { onRowClick, onEdit: openEdit, onDelete: openDelete },
+    }),
+    [pagination, onRowClick, openEdit, openDelete]
+  );
 
   return (
     <PageContainer>
       {/* Header */}
-      <Box
-        sx={{
-          display: "flex",
-          gap: 2,
-          alignItems: "center",
-          flexWrap: "wrap",
-          mb: 3,
-        }}
-      >
-        <Typography
-          variant="h4"
-          sx={{
-            flexGrow: 1,
-            fontFamily: "'Star Jedi', sans-serif",
-            color: "#ffe81f",
-            textShadow: "0 0 10px #ffe81f",
-          }}
-        >
-          Список пользователей
+      <UsersHeader
+        usersPerPage={usersPerPage}
+        onChangeUsersPerPage={handleChangeUsersPerPage}
+        onCreate={openCreate}
+      />
+
+      {/* Лоадер */}
+      {loading && (
+        <Box sx={{ mt: 4, display: "flex", justifyContent: "center" }}>
+          <CircularProgress />
+        </Box>
+      )}
+
+      {/* Ошибка */}
+      {error && (
+        <Typography color="error" sx={{ mt: 4, textAlign: "center" }}>
+          {error}
         </Typography>
+      )}
 
-        <GlowButton
-          onClick={() => {
-            setModalMode("create");
-            setSelectedUser(undefined);
-            setModalOpen(true);
-          }}
-        >
-          Создать пользователя
-        </GlowButton>
+      {/* Таблица */}
+      {!loading && !error && <UsersTable users={users} config={tableConfig} />}
 
-        <FormControl size="small">
-          <InputLabel>На странице</InputLabel>
-          <Select
-            value={usersPerPage}
-            label="На странице"
-            onChange={handleChangeUsersPerPage}
-          >
-            {[5, 10, 15, 20, 50].map((num) => (
-              <MenuItem key={num} value={num}>
-                {num}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      </Box>
-
-      {/* Table */}
-      <StarBox sx={{ flex: 1, overflowY: "auto" }}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              {[
-                "Аватар",
-                "Имя",
-                "Email",
-                "Телефон",
-                "Должность",
-                "Действия",
-              ].map((title) => (
-                <StarTableCell key={title}>{title}</StarTableCell>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {paginatedUsers.map((user) => (
-              <TableRow
-                key={user.id}
-                hover
-                onClick={() => navigate(`/users/${user.id}`)}
-                sx={{
-                  cursor: "pointer",
-                  "&:hover": {
-                    backgroundColor: "rgba(255, 232, 31, 0.05)",
-                    transition: "0.2s",
-                  },
-                }}
-              >
-                <TableCell>
-                  <StarAvatar src={user.avatar} alt={user.fullName} />
-                </TableCell>
-                <StarTableCell>{user.fullName}</StarTableCell>
-                <StarTableCell>{user.email}</StarTableCell>
-                <StarTableCell>{user.phone}</StarTableCell>
-                <StarTableCell>{user.position}</StarTableCell>
-                <StarTableCell>
-                  <IconButton
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setModalMode("edit");
-                      setSelectedUser(user);
-                      setModalOpen(true);
-                    }}
-                  >
-                    <Edit sx={{ color: "#ffe81f" }} />
-                  </IconButton>
-                  <IconButton
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setModalMode("delete");
-                      setSelectedUser(user);
-                      setModalOpen(true);
-                    }}
-                  >
-                    <Delete sx={{ color: "#ff5555" }} />
-                  </IconButton>
-                </StarTableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </StarBox>
-
-      {/* Pagination */}
-      <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
-        <Pagination
-          count={Math.ceil(users.length / usersPerPage)}
-          page={page}
-          onChange={handleChangePage}
-          color="primary"
-        />
-      </Box>
-
-      {/* Modal */}
+      {/* Модалка */}
       <UserModal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={closeModal}
         mode={modalMode}
         user={selectedUser}
       />
