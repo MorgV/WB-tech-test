@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.1](https://github.com/MorgV/WB-tech-test/compare/v0.1.0...v0.1.1) (2025-10-22)
+
+
+### Features
+
+* **app:** рефакторинг и оптимизация ([0b648d0](https://github.com/MorgV/WB-tech-test/commit/0b648d0d94f5954d7d2dcf49ac5b10b2c752ea3d))
+* **components:** добавлена модалка и ее использование: редактирование, удаление, добавление ([b9ca27b](https://github.com/MorgV/WB-tech-test/commit/b9ca27bb8ea1390b969cb9d79dd3e0aea00bd155))
+* **UsersListPage:** добавлена логика pagination + select ([ca05ad6](https://github.com/MorgV/WB-tech-test/commit/ca05ad6f0b3b64d630efca706943df6de62a0096))
+* добавлены стили Star Wars и переработана структура проекта под feature-based архитектуру ([da903ac](https://github.com/MorgV/WB-tech-test/commit/da903ac2e2eac9af5e3d53fa0dd131a3ffd3e4f7))
+
+
+### Bug Fixes
+
+* **components:** пофикшено отлов ошибок и лоадер в модалке ([4aebfbf](https://github.com/MorgV/WB-tech-test/commit/4aebfbf2c2c28c72734217d5790c45d054409273))
+
 ## [0.1.0](https://github.com/MorgV/WB-tech-test/compare/v0.0.5...v0.1.0) (2025-10-21)
 
 
