@@ -4,17 +4,39 @@ import {
   type PayloadAction,
   type AnyAction,
 } from "@reduxjs/toolkit";
-import { usersApi, type User } from "../../api/usersApi";
+import { usersApi, type User } from "../api/usersApi";
 
 //  Async thunks (API calls)
-export const fetchUsers = createAsyncThunk<User[]>(
-  "users/fetchAll",
-  async () => await usersApi.getAll()
-);
+export const fetchUsers = createAsyncThunk<
+  User[],
+  void,
+  { state: { users: UsersState } }
+>("users/fetchAll", async () => await usersApi.getAll(), {
+  condition: (_, { getState }) => {
+    const { list } = getState().users;
+    // если список уже есть, не делать повторный запрос
+    return list.length === 0;
+  },
+});
 
-export const fetchUserById = createAsyncThunk<User, string>(
+export const fetchUserById = createAsyncThunk<
+  User,
+  string,
+  { state: { users: UsersState } }
+>(
   "users/fetchById",
-  async (id) => await usersApi.getById(id)
+  async (id) => {
+    const user = await usersApi.getById(id);
+    return user;
+  },
+  {
+    condition: (id, { getState }) => {
+      const { current } = getState().users;
+      // если текущий юзер уже совпадает с id, отменяем fetch
+      if (current?.id === id) return false;
+      return true;
+    },
+  }
 );
 
 export const createUser = createAsyncThunk<User, Partial<User>>(
@@ -72,8 +94,17 @@ const usersSlice = createSlice({
   extraReducers: (builder) => {
     builder
       // fetch all
+      .addCase(fetchUsers.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(fetchUsers.fulfilled, (state, action: PayloadAction<User[]>) => {
         state.list = action.payload;
+        state.loading = false;
+      })
+      .addCase(fetchUsers.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error?.message || "Произошла ошибка";
       })
 
       // fetch by id
@@ -100,25 +131,6 @@ const usersSlice = createSlice({
       // delete
       .addCase(deleteUser.fulfilled, (state, action: PayloadAction<string>) => {
         state.list = state.list.filter((u) => u.id !== action.payload);
-      })
-
-      //  Универсальные matchers
-      .addMatcher(
-        (action) => action.type.endsWith("/pending"),
-        (state) => {
-          state.loading = true;
-          state.error = null;
-        }
-      )
-      .addMatcher(
-        (action) => action.type.endsWith("/fulfilled"),
-        (state) => {
-          state.loading = false;
-        }
-      )
-      .addMatcher(isRejectedAction, (state, action) => {
-        state.loading = false;
-        state.error = action.error?.message || "Произошла ошибка";
       });
   },
 });
